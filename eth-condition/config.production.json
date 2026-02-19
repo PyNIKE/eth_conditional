@@ -1,0 +1,13 @@
+{
+  "chainSelectorName": "ethereum-mainnet",
+  "isTestnet": false,
+
+  "escrowAddress": "0xeDA0EDd5F5F275c9f0288E67BA7e710f886BeD81",
+  "receiverAddress": "0x3dD26427Af020AaC855B9BB11ccda7cB4552588F",
+
+  "chainId": 1,
+  "apiBaseUrl": "https://YOUR_PUBLIC_API_HOST",
+
+  "gasLimit": "500000",
+  "confidence": "CONFIDENCE_LEVEL_SAFE"
+}
