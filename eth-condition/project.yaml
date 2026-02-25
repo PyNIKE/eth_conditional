@@ -6,8 +6,6 @@ staging-settings:
   rpcs:
     - chain-name: ethereum-mainnet
       url: https://mainnet.infura.io/v3/d8eb43c52f284bb48ac977cfc22e7f9e
-    - chain-name: ethereum-testnet-sepolia
-      url: https://ethereum-sepolia-rpc.publicnode.com
 
 production-settings:
   rpcs:

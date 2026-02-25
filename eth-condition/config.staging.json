@@ -1,3 +1,13 @@
 {
-  "schedule": "*/30 * * * * *"
+  "chainSelectorName": "ethereum-mainnet",
+  "isTestnet": false,
+
+  "escrowAddress": "0xeDA0EDd5F5F275c9f0288E67BA7e710f886BeD81",
+  "receiverAddress": "0x4885631C7335290aDCDc4b6B95f97549f5a40edD",
+
+  "chainId": 1,
+  "apiBaseUrl": "https://api.147.182.247.224.nip.io",
+
+  "gasLimit": "500000",
+  "confidence": "CONFIDENCE_LEVEL_SAFE"
 }

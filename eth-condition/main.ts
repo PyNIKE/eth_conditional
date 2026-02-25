@@ -38,21 +38,34 @@ type ApiTask = {
   chainId: number
   agreementId: number
   status: "pending" | "completed" | "disputed"
+
   worker: `0x${string}`
   txHash: `0x${string}`
   completedAt: number
   signature: `0x${string}`
+
+  target: `0x${string}`
+  key: string
+  value: string
 }
 
-function buildCompletionMessage(task: Pick<ApiTask, "chainId" | "agreementId" | "txHash" | "completedAt">) {
-  return `JiffyEscrowComplete|chainId=${task.chainId}|agreementId=${task.agreementId}|txHash=${task.txHash}|completedAt=${task.completedAt}`
+function buildCompletionMessage(task: Pick<ApiTask,
+  "chainId" | "agreementId" | "target" | "key" | "value" | "txHash" | "completedAt"
+>) {
+  return [
+    "JiffyEscrowComplete",
+    `chainId=${task.chainId}`,
+    `agreementId=${task.agreementId}`,
+    `target=${task.target.toLowerCase()}`,
+    `key=${task.key}`,
+    `value=${task.value}`,
+    `txHash=${task.txHash.toLowerCase()}`,
+    `completedAt=${task.completedAt}`,
+  ].join("|")
 }
 
 /**
  * EscrowSignal(uint256 indexed id)
- * -> topics[0] = signature
- * -> topics[1] = id (32 bytes)
- * -> data = 0x (пусто)
  */
 function parseAgreementId(runtime: Runtime<Config>, log: EVMLog): bigint | null {
   try {
@@ -65,10 +78,6 @@ function parseAgreementId(runtime: Runtime<Config>, log: EVMLog): bigint | null 
   }
 }
 
-/**
- * "identical aggregation" для строк:
- * берём наиболее частую строку (mode).
- */
 function makeIdenticalStringAggregation(): any {
   return {
     aggregate: (values: string[]) => {
@@ -99,19 +108,17 @@ const initWorkflow = (config: Config) => {
 
   const evmClient = new EVMClient(network.chainSelector.selector)
 
-  // topic0 = keccak256("EscrowSignal(uint256)")
   const escrowSignalTopic0 = keccak256(toBytes("EscrowSignal(uint256)"))
 
   const onLog = (runtime: Runtime<Config>, log: EVMLog): string => {
     const agreementId = parseAgreementId(runtime, log)
     if (agreementId === null) return "skip: not escrow signal"
 
-    runtime.log(`EscrowSignal caught: id=${agreementId.toString()} tx=${bytesToHex(log.txHash)}`)
+    runtime.log(`EscrowSignal caught id=${agreementId.toString()} tx=${bytesToHex(log.txHash)}`)
 
-    // --- HTTP GET в NodeRuntime через runInNodeMode ---
+    // --- GET task from API ---
     const fetchTaskText = (nodeRuntime: NodeRuntime<Config>): string => {
       const httpClient = new HTTPClient()
-
       const url =
         `${nodeRuntime.config.apiBaseUrl.replace(/\/$/, "")}` +
         `/tasks/${nodeRuntime.config.chainId}/${agreementId.toString()}`
@@ -128,19 +135,22 @@ const initWorkflow = (config: Config) => {
     try {
       task = JSON.parse(taskText) as ApiTask
     } catch {
-      runtime.log(`API returned non-JSON: ${taskText.slice(0, 250)}`)
+      runtime.log(`Bad API JSON: ${taskText.slice(0, 200)}`)
       return "skip: bad api json"
     }
 
     if (!task || task.status !== "completed") {
-      runtime.log(`Task status=${task?.status ?? "unknown"} => skip`)
+      runtime.log(`Task status=${task?.status ?? "unknown"} -> skip`)
       return "skip: not completed"
     }
 
-    // Verify signature (EIP-191 signMessage)
+    // --- verify signature ---
     const msg = buildCompletionMessage({
       chainId: task.chainId,
       agreementId: task.agreementId,
+      target: task.target,
+      key: task.key,
+      value: task.value,
       txHash: task.txHash,
       completedAt: task.completedAt,
     })
@@ -152,12 +162,17 @@ const initWorkflow = (config: Config) => {
     })
 
     if (!sigOk) {
-      runtime.log(`Bad signature. worker=${task.worker} agreementId=${task.agreementId}`)
+      runtime.log(`Bad signature worker=${task.worker} id=${task.agreementId}`)
       return "skip: bad signature"
     }
 
-    // Report = abi.encode(uint256 agreementId)
-    const payload = encodeAbiParameters(parseAbiParameters("uint256 agreementId"), [agreementId])
+    runtime.log(`Signature OK for id=${task.agreementId}`)
+
+    // --- build report ---
+    const payload = encodeAbiParameters(
+      parseAbiParameters("uint256 agreementId"),
+      [agreementId]
+    )
 
     const report = runtime
       .report({
@@ -168,7 +183,7 @@ const initWorkflow = (config: Config) => {
       })
       .result()
 
-    // Secure write to Receiver
+    // --- secure write ---
     const wr = evmClient
       .writeReport(runtime, {
         receiver: runtime.config.receiverAddress,
@@ -177,8 +192,8 @@ const initWorkflow = (config: Config) => {
       })
       .result()
 
-    runtime.log(`writeReport OK. txHash=${bytesToHex(wr.txHash || new Uint8Array(32))}`)
-    return `ok: wrote report for id=${agreementId.toString()}`
+    runtime.log(`writeReport OK txHash=${bytesToHex(wr.txHash || new Uint8Array(32))}`)
+    return `ok: report for id=${agreementId.toString()}`
   }
 
   return [

@@ -6,7 +6,7 @@
   "receiverAddress": "0x3dD26427Af020AaC855B9BB11ccda7cB4552588F",
 
   "chainId": 1,
-  "apiBaseUrl": "https://YOUR_PUBLIC_API_HOST",
+  "apiBaseUrl": "https://api.147.182.247.224.nip.io",
 
   "gasLimit": "500000",
   "confidence": "CONFIDENCE_LEVEL_SAFE"

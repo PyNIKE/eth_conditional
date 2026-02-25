@@ -15,6 +15,11 @@
 #     secrets-path: "../secrets.yaml"       # Path to secrets file (project root by default)
 
 # ==========================================================================
+
+# ==========================================================================
+# CRE WORKFLOW SETTINGS FILE
+# ==========================================================================
+
 staging-settings:
   user-workflow:
     workflow-name: "eth_conditional-staging"
@@ -22,9 +27,7 @@ staging-settings:
     workflow-path: "./main.ts"
     config-path: "./config.staging.json"
     secrets-path: ""
-    
 
-# ==========================================================================
 production-settings:
   user-workflow:
     workflow-name: "eth_conditional-production"

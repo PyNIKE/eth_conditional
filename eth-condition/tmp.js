@@ -18473,7 +18473,16 @@ init_encodeAbiParameters();
 init_toBytes();
 init_keccak256();
 function buildCompletionMessage(task) {
-  return `JiffyEscrowComplete|chainId=${task.chainId}|agreementId=${task.agreementId}|txHash=${task.txHash}|completedAt=${task.completedAt}`;
+  return [
+    "JiffyEscrowComplete",
+    `chainId=${task.chainId}`,
+    `agreementId=${task.agreementId}`,
+    `target=${task.target.toLowerCase()}`,
+    `key=${task.key}`,
+    `value=${task.value}`,
+    `txHash=${task.txHash.toLowerCase()}`,
+    `completedAt=${task.completedAt}`
+  ].join("|");
 }
 function parseAgreementId(runtime2, log) {
   try {
@@ -18520,7 +18529,7 @@ var initWorkflow = (config) => {
     const agreementId = parseAgreementId(runtime2, log);
     if (agreementId === null)
       return "skip: not escrow signal";
-    runtime2.log(`EscrowSignal caught: id=${agreementId.toString()} tx=${bytesToHex(log.txHash)}`);
+    runtime2.log(`EscrowSignal caught id=${agreementId.toString()} tx=${bytesToHex(log.txHash)}`);
     const fetchTaskText = (nodeRuntime) => {
       const httpClient = new ClientCapability2;
       const url = `${nodeRuntime.config.apiBaseUrl.replace(/\/$/, "")}` + `/tasks/${nodeRuntime.config.chainId}/${agreementId.toString()}`;
@@ -18532,16 +18541,19 @@ var initWorkflow = (config) => {
     try {
       task = JSON.parse(taskText);
     } catch {
-      runtime2.log(`API returned non-JSON: ${taskText.slice(0, 250)}`);
+      runtime2.log(`Bad API JSON: ${taskText.slice(0, 200)}`);
       return "skip: bad api json";
     }
     if (!task || task.status !== "completed") {
-      runtime2.log(`Task status=${task?.status ?? "unknown"} => skip`);
+      runtime2.log(`Task status=${task?.status ?? "unknown"} -> skip`);
       return "skip: not completed";
     }
     const msg = buildCompletionMessage({
       chainId: task.chainId,
       agreementId: task.agreementId,
+      target: task.target,
+      key: task.key,
+      value: task.value,
       txHash: task.txHash,
       completedAt: task.completedAt
     });
@@ -18551,9 +18563,10 @@ var initWorkflow = (config) => {
       signature: task.signature
     });
     if (!sigOk) {
-      runtime2.log(`Bad signature. worker=${task.worker} agreementId=${task.agreementId}`);
+      runtime2.log(`Bad signature worker=${task.worker} id=${task.agreementId}`);
       return "skip: bad signature";
     }
+    runtime2.log(`Signature OK for id=${task.agreementId}`);
     const payload = encodeAbiParameters(parseAbiParameters("uint256 agreementId"), [agreementId]);
     const report2 = runtime2.report({
       encodedPayload: hexToBase64(payload),
@@ -18566,8 +18579,8 @@ var initWorkflow = (config) => {
       report: report2,
       gasConfig: { gasLimit: runtime2.config.gasLimit }
     }).result();
-    runtime2.log(`writeReport OK. txHash=${bytesToHex(wr.txHash || new Uint8Array(32))}`);
-    return `ok: wrote report for id=${agreementId.toString()}`;
+    runtime2.log(`writeReport OK txHash=${bytesToHex(wr.txHash || new Uint8Array(32))}`);
+    return `ok: report for id=${agreementId.toString()}`;
   };
   return [
     handler(evmClient.logTrigger({
