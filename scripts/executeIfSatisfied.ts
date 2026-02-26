@@ -2,27 +2,61 @@ import { ethers } from "hardhat";
 import * as dotenv from "dotenv";
 import * as path from "path";
 
-// Явно грузим .env из корня репо (где package.json)
-// Если скрипт запускаешь из eth-condition/, это важно.
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
-const ESCROW = process.env.ESCROW_MAINNET || "0xeDA0EDd5F5F275c9f0288E67BA7e710f886BeD81";
-const OWNER_PK = process.env.CRE_ETH_PRIVATE_KEY || "";
-const OWNER_ADDR = (process.env.OWNER || "").toLowerCase();
-const AGREEMENT_ID = Number(process.env.AGREEMENT_ID || "0");
-if (!Number.isFinite(AGREEMENT_ID) || AGREEMENT_ID <= 0) {
-  throw new Error("Set AGREEMENT_ID env var (positive integer)");
+function getArg(name: string): string | undefined {
+  const eq = process.argv.find((a) => a.startsWith(`--${name}=`));
+  if (eq) return eq.split("=", 2)[1];
+  const i = process.argv.indexOf(`--${name}`);
+  if (i >= 0 && process.argv[i + 1]) return process.argv[i + 1];
+  return undefined;
+}
+
+function usage() {
+  console.log(`Usage:
+  # Option A (preferred with hardhat): use ENV
+  ID=17 npx hardhat run scripts/executeIfSatisfied.ts --network mainnet
+
+  # Option B (works if args reach node process)
+  npx hardhat run scripts/executeIfSatisfied.ts --network mainnet -- --id <agreementId>
+
+Args:
+  --id   Agreement ID
+
+Env:
+  ID or AGREEMENT_ID
+  ESCROW_MAINNET (optional fallback)
+  CRE_ETH_PRIVATE_KEY (required)
+  OWNER (optional)
+`);
 }
 
 async function main() {
-  console.log("ENV loaded:", {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    usage();
+    return;
+  }
+
+  const ESCROW =
+    process.env.ESCROW_MAINNET || "0xeDA0EDd5F5F275c9f0288E67BA7e710f886BeD81";
+  const OWNER_PK = process.env.CRE_ETH_PRIVATE_KEY || "";
+  const OWNER_ADDR = (process.env.OWNER || "").toLowerCase();
+
+  if (!OWNER_PK) throw new Error("Set CRE_ETH_PRIVATE_KEY in .env");
+
+  // ✅ CLI OR ENV (Hardhat-friendly)
+  const idStr = getArg("id") || process.env.ID || process.env.AGREEMENT_ID;
+  if (!idStr) throw new Error("Missing --id (or set env ID/AGREEMENT_ID)");
+
+  const AGREEMENT_ID = Number(idStr);
+  if (!Number.isFinite(AGREEMENT_ID) || AGREEMENT_ID <= 0) throw new Error("Bad agreement id");
+
+  console.log("Signer env loaded:", {
     has_ESCROW_MAINNET: !!process.env.ESCROW_MAINNET,
     has_CRE_ETH_PRIVATE_KEY: !!process.env.CRE_ETH_PRIVATE_KEY,
     has_OWNER: !!process.env.OWNER,
     has_ETH_RPC: !!process.env.ETH_RPC,
   });
-
-  if (!OWNER_PK) throw new Error("Set CRE_ETH_PRIVATE_KEY in .env");
 
   const signer = new ethers.Wallet(OWNER_PK, ethers.provider);
   const signerAddr = (await signer.getAddress()).toLowerCase();

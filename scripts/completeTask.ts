@@ -1,18 +1,49 @@
-// scripts/completeTask.ts
 import { Wallet } from "ethers";
 import * as dotenv from "dotenv";
 import * as path from "path";
 
-// Явно грузим .env из корня репо (важно, если запускаешь из подпапок)
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
+
+function getArg(name: string): string | undefined {
+  const eq = process.argv.find((a) => a.startsWith(`--${name}=`));
+  if (eq) return eq.split("=", 2)[1];
+  const i = process.argv.indexOf(`--${name}`);
+  if (i >= 0 && process.argv[i + 1]) return process.argv[i + 1];
+  return undefined;
+}
+
+function usage() {
+  console.log(`Usage:
+  # Option A (preferred with hardhat): use ENV
+  ID=17 KEY=17 VALUE=777 TX=0x... npx hardhat run scripts/completeTask.ts --network mainnet
+
+  # Option B (works if args reach node process)
+  npx hardhat run scripts/completeTask.ts --network mainnet -- --id <agreementId> --key <u256> --value <u256> --tx <0x...>
+
+Args:
+  --id     agreementId
+  --key    uint256 key
+  --value  uint256 value
+  --tx     txHash_work (0x + 64 hex)
+
+Env:
+  ID or AGREEMENT_ID
+  KEY or KEY_U256
+  VALUE or VALUE_U256
+  TX or TX_HASH_WORK
+
+  API_BASE_URL (optional)
+  API_KEY (optional)
+  WORKER_PRIVATE_KEY (required)
+  PAYEE (required worker address)
+  DEMO_CONFIG_MAINNET (required)
+`);
+}
 
 const API_BASE_URL = process.env.API_BASE_URL || "https://api.147.182.247.224.nip.io";
 const API_KEY = process.env.API_KEY || "";
 
-const WORKER_PK =
-  process.env.WORKER_PRIVATE_KEY ||
-  process.env.WORKER_PK ||
-  "";
+const WORKER_PK = process.env.WORKER_PRIVATE_KEY || process.env.WORKER_PK || "";
 
 function assert(condition: any, msg: string): asserts condition {
   if (!condition) throw new Error(msg);
@@ -20,6 +51,9 @@ function assert(condition: any, msg: string): asserts condition {
 
 function isAddress(addr: string) {
   return /^0x[0-9a-fA-F]{40}$/.test(addr);
+}
+function isTxHash(h: string) {
+  return /^0x[0-9a-fA-F]{64}$/.test(h);
 }
 
 async function readTextSafe(res: Response) {
@@ -31,13 +65,27 @@ async function readTextSafe(res: Response) {
 }
 
 async function main() {
-  assert(WORKER_PK, "Set WORKER_PRIVATE_KEY (or WORKER_PK) in .env");
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    usage();
+    return;
+  }
 
-  // ====== PARAMS FROM ENV (no hardcode) ======
+  assert(WORKER_PK, "Set WORKER_PRIVATE_KEY in .env");
   const chainId = 1;
 
-  const agreementId = Number(process.env.AGREEMENT_ID || "");
-  assert(Number.isFinite(agreementId) && agreementId > 0, "Set AGREEMENT_ID");
+  // ✅ CLI OR ENV (Hardhat-friendly)
+  const idStr = getArg("id") || process.env.ID || process.env.AGREEMENT_ID;
+  const keyStr = getArg("key") || process.env.KEY || process.env.KEY_U256;
+  const valStr = getArg("value") || process.env.VALUE || process.env.VALUE_U256;
+  const txStr = getArg("tx") || process.env.TX || process.env.TX_HASH_WORK;
+
+  if (!idStr) throw new Error("Missing --id (or set env ID/AGREEMENT_ID)");
+  if (!keyStr) throw new Error("Missing --key (or set env KEY/KEY_U256)");
+  if (!valStr) throw new Error("Missing --value (or set env VALUE/VALUE_U256)");
+  if (!txStr) throw new Error("Missing --tx (or set env TX/TX_HASH_WORK)");
+
+  const agreementId = Number(idStr);
+  if (!Number.isFinite(agreementId) || agreementId <= 0) throw new Error("Bad id (agreementId)");
 
   const worker = (process.env.PAYEE || "").trim();
   assert(worker, "Set PAYEE in .env");
@@ -47,18 +95,15 @@ async function main() {
   assert(target, "Set DEMO_CONFIG_MAINNET in .env");
   assert(isAddress(target), `Bad DEMO_CONFIG_MAINNET address: ${target}`);
 
-  const key = Number(process.env.KEY_U256 || "");
-  const value = Number(process.env.VALUE_U256 || "");
-  assert(Number.isFinite(key), "Set KEY_U256");
-  assert(Number.isFinite(value), "Set VALUE_U256");
+  // keep as decimal strings (safe for API + message)
+  const key = BigInt(keyStr).toString();
+  const value = BigInt(valStr).toString();
 
-  const txHash = (process.env.TX_HASH_WORK || "").toLowerCase();
-  assert(txHash && txHash.startsWith("0x") && txHash.length === 66, "Set TX_HASH_WORK");
+  const txHash = txStr.toLowerCase();
+  assert(isTxHash(txHash), "Bad txHash (expected 0x + 64 hex chars)");
 
-  // фиксируем completedAt (одно значение для message и POST)
   const completedAt = Math.floor(Date.now() / 1000);
 
-  // ====== MESSAGE (ONE LINE, EXACT FORMAT) ======
   const message =
     `JiffyEscrowComplete|` +
     `chainId=${chainId}|` +
@@ -69,7 +114,6 @@ async function main() {
     `txHash=${txHash}|` +
     `completedAt=${completedAt}`;
 
-  // ====== SIGN ======
   const wallet = new Wallet(WORKER_PK);
   const signerAddr = (await wallet.getAddress()).toLowerCase();
 
@@ -80,7 +124,6 @@ async function main() {
 
   const signature = await wallet.signMessage(message);
 
-  // ====== BODY ======
   const body = {
     chainId,
     agreementId,
@@ -88,14 +131,12 @@ async function main() {
     txHash,
     completedAt,
     target,
-    key: String(key),
-    value: String(value),
+    key,
+    value,
     signature,
   };
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (API_KEY) headers["x-api-key"] = API_KEY;
 
   console.log("=== Completion payload ===");
@@ -103,7 +144,6 @@ async function main() {
   console.log("\n=== Message signed (ONE LINE) ===\n" + message);
   console.log("\n=== Signature ===\n" + signature);
 
-  // ====== POST /tasks/complete ======
   const postRes = await fetch(`${API_BASE_URL}/tasks/complete`, {
     method: "POST",
     headers,
@@ -117,7 +157,6 @@ async function main() {
 
   if (!postRes.ok) throw new Error("POST /tasks/complete failed");
 
-  // ====== GET /tasks/:chainId/:agreementId ======
   const getRes = await fetch(`${API_BASE_URL}/tasks/${chainId}/${agreementId}`, {
     method: "GET",
   });
@@ -132,9 +171,7 @@ async function main() {
       const json = JSON.parse(getText);
       console.log("\n=== Parsed status ===");
       console.log("status:", json?.status);
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 }
 

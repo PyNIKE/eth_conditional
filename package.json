@@ -5,7 +5,13 @@
   "license": "MIT",
   "scripts": {
     "api:build": "tsc -p api/tsconfig.json",
-    "api:start": "node dist-api/server.js"
+    "api:start": "node dist-api/server.js",
+
+    "demo:create": "hardhat run scripts/createAgreementAndDeposit.ts --network mainnet",
+    "demo:setconfig": "hardhat run scripts/setConfig.ts --network mainnet",
+    "demo:complete": "hardhat run scripts/completeTask.ts --network mainnet",
+    "demo:execute": "hardhat run scripts/executeIfSatisfied.ts --network mainnet",
+    "demo:check": "hardhat run scripts/checkAgreement.ts --network mainnet"
   },
   "devDependencies": {
     "@chainlink/cre-sdk": "^1.0.9",
