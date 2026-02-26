@@ -29,7 +29,6 @@ executeIfSatisfied(id)
 Releases WETH payout
 
 🎯 Goal: demonstrate real orchestration of
-
 Blockchain → API → Crypto Verification → Onchain Write → Payout
 
 
