@@ -1,12 +1,13 @@
 Conditional Escrow (WETH) + External API + Chainlink CRE (E2E Demo)
 
+
 A demo project showcasing a conditional WETH escrow with full workflow orchestration:
 Blockchain Event → External API → Cryptographic Verification → Chainlink Secure Write → Onchain Payout
 Built for hackathon / technical demo purposes.
 
 
-📌 About the Project
 
+📌 About the Project
 This project demonstrates a conditional WETH escrow on Ethereum mainnet.
 Workflow
 
@@ -30,6 +31,8 @@ Releases WETH payout
 🎯 Goal: demonstrate real orchestration of
 
 Blockchain → API → Crypto Verification → Onchain Write → Payout
+
+
 
 ⚙️ Tech Stack
 
@@ -55,7 +58,11 @@ writeReport (secure onchain write)
    ↓
 executeIfSatisfied → WETH payout
 
+
+
 <img width="377" height="658" alt="image" src="https://github.com/user-attachments/assets/9c9d8838-5753-4b81-a99b-392bf08c5d03" />
+
+
 
 
 
@@ -79,10 +86,9 @@ Payer must have:
 ETH for gas
 Some WETH
 
+
 2. Environment Variables
-
 Create .env (see .env.example):
-
 MAINNET_RPC_URL=
 PAYER_PRIVATE_KEY=
 WORKER_PRIVATE_KEY=
@@ -90,8 +96,9 @@ ESCROW_ADDRESS=
 DEMO_CONFIG_ADDRESS=
 WETH_ADDRESS=
 API_URL=
-
 ⚠️ Never commit .env to GitHub
+
+
 
 🚀 E2E Runbook (Jury Quickstart)
 
@@ -99,41 +106,43 @@ Save all tx hashes and IDs as proof.
 
 Step 1 — Create Agreement + Deposit
 HOURS=1 npm run demo:create
-
 Save:
 ID
 CREATE_TX
 DEPOSIT_TX
 EVENT_INDEX
 
+
+
 Step 2 — Worker Onchain Task
 KEY=<ID> VALUE=777 npm run demo:setconfig
-
 Save:
 WORK_TX
 
+
 Step 3 — Completion Claim via API
 ID=<ID> KEY=<ID> VALUE=777 TX=<WORK_TX> npm run demo:complete
-
 Check:
 status: completed
+
 
 Step 4 — Chainlink CRE Workflow
 cd eth-condition
 cre workflow simulate . --target production-settings --broadcast
-
 Enter:
 transaction hash → DEPOSIT_TX
 event index → EVENT_INDEX
 Save:
 WRITEREPORT_TX
 
+
 Step 5 — Execute Payout
 ID=<ID> npm run demo:execute
-
 Save:
 EXECUTE_TX
 Verify ERC-20 transfer in Etherscan.
+
+
 
 🏁 Jury Proof Checklist
 ✅ CREATE_TX
@@ -165,8 +174,10 @@ api/                  # External API
 test/
 .env.example
 
+
 🤝 Contact
 Telegram: @Top_horse
+
 
 📜 License
 MIT
