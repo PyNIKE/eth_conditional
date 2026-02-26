@@ -1,4 +1,4 @@
-#Conditional Escrow (WETH) + External API + Chainlink CRE (E2E Demo)
+# Conditional Escrow (WETH) + External API + Chainlink CRE (E2E Demo)
 
 
 A demo project showcasing a conditional WETH escrow with full workflow orchestration:
@@ -7,7 +7,7 @@ Built for hackathon / technical demo purposes.
 
 
 
-##📌 About the Project
+## 📌 About the Project
 This project demonstrates a conditional WETH escrow on Ethereum mainnet.
 Workflow
 
@@ -34,7 +34,7 @@ Blockchain → API → Crypto Verification → Onchain Write → Payout
 
 
 
-##⚙️Tech Stak
+## ⚙️Tech Stak
 
 Hardhat + TypeScript
 Ethereum Mainnet
@@ -56,7 +56,7 @@ curl https://api.147.182.247.224.nip.io/tasks/1/<ID>
 
 
 
-##🧩 Architecture
+## 🧩 Architecture
 
 Payer
    ↓
@@ -79,7 +79,7 @@ executeIfSatisfied → WETH payout
 
 
 
-##✅ Prerequisites
+## ✅ Prerequisites
 1. Two Wallets
 You need 2 accounts / private keys.
 
@@ -112,7 +112,7 @@ API_URL=
 
 
 
-##🚀 E2E Runbook (Jury Quickstart)
+## 🚀 E2E Runbook (Jury Quickstart)
 
 Save all tx hashes and IDs as proof.
 
@@ -156,7 +156,7 @@ Verify ERC-20 transfer in Etherscan.
 
 
 
-##🏁 Jury Proof Checklist
+## 🏁 Jury Proof Checklist
 ✅ CREATE_TX
 ✅ DEPOSIT_TX
 ✅ WORK_TX
@@ -164,7 +164,7 @@ Verify ERC-20 transfer in Etherscan.
 ✅ EXECUTE_TX
 
 
-##⚠️ Common Issues
+## ⚠️ Common Issues
 Execute Transaction Stuck
 Possible reasons:
 Pending transaction
@@ -178,7 +178,7 @@ Use ENV format:
 KEY=... VALUE=... npm run demo:setconfig
 
 
-##📁 Project Structure
+## 📁 Project Structure
 contracts/
 scripts/
 eth-condition/        # Chainlink CRE workflow
@@ -187,9 +187,9 @@ test/
 .env.example
 
 
-##🤝 Contact
+## 🤝 Contact
 Telegram: @Top_horse
 
 
-##📜 License
+## 📜 License
 MIT
